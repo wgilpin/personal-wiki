@@ -109,7 +109,7 @@ def call_api(meeting_note: str, existing_context: dict, corrections: dict[str, s
     )
 
     finish = response.candidates[0].finish_reason if response.candidates else None
-    if str(finish) == "MAX_TOKENS":
+    if finish and "MAX_TOKENS" in str(finish):
         raise RuntimeError("Output truncated — hit model token limit")
 
     return WikiOutput.model_validate_json(response.text)

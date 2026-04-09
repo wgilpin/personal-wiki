@@ -72,17 +72,33 @@ def append_pending(items: list[PendingItem], registry=None, dry_run: bool = Fals
 
     existing = read_file_safe(PENDING_FILE)
     if not existing:
-        existing = "# Pending — Bill\n\nActions only Bill owns. Review weekly.\n\n"
+        existing = "# Pending — Bill\n\nActions only Bill owns. Review weekly.\n"
 
-    new_lines = []
+    # Group new items by date, inserting under existing or new h3 headings
     for item in items:
-        line = f"- [ ] {item.action} — {item.project} (captured {item.date_captured}, from: {item.source_meeting})"
+        project_part = f" — {item.project}" if item.project and item.project not in ("unknown", "none", "") else ""
+        line = f"- [ ] {item.action}{project_part} (from: {item.source_meeting})"
         if registry:
             line = link_pending_line(line, registry)
-        new_lines.append(line)
 
-    updated = existing.rstrip() + "\n" + "\n".join(new_lines) + "\n"
-    write_file(PENDING_FILE, updated, dry_run)
+        heading = f"### {item.date_captured}"
+        if heading in existing:
+            # Find the end of this date section (next heading or EOF) and append
+            idx = existing.index(heading) + len(heading)
+            # Find the next line after the heading
+            next_nl = existing.index("\n", idx)
+            # Find the next heading or end of file
+            next_heading = existing.find("\n### ", next_nl)
+            if next_heading == -1:
+                insert_at = len(existing.rstrip())
+            else:
+                insert_at = next_heading
+            existing = existing[:insert_at].rstrip() + "\n" + line + "\n" + existing[insert_at:]
+        else:
+            # Append new date section at end
+            existing = existing.rstrip() + f"\n\n{heading}\n{line}\n"
+
+    write_file(PENDING_FILE, existing, dry_run)
 
 
 def apply_people_updates(updates: list[PeopleUpdate], dry_run: bool = False):

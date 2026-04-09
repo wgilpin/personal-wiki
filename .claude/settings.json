@@ -3,7 +3,8 @@
     "allow": [
       "Read(//Users/bgilpin/wiki/benchsci/projects/cai-1/**)",
       "Read(//Users/bgilpin/wiki/benchsci/themes/**)",
-      "Read(//Users/bgilpin/wiki/benchsci/**)"
+      "Read(//Users/bgilpin/wiki/benchsci/**)",
+      "WebFetch(domain:www.moritzjung.dev)"
     ]
   }
 }

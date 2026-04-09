@@ -237,6 +237,7 @@ Each item must be:
 - Specifically Bill's to own, not delegated tracking
 - Actionable — a real next step not a vague intention
 - Tied to a project and date
+- If no clear project applies, set project to an empty string — do not use "unknown"
 
 ## Name Resolution
 

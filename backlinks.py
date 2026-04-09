@@ -252,7 +252,7 @@ def link_pending_line(line: str, registry: list[Entity], _slug_map: dict[str, En
         _slug_map = _build_project_slug_map(registry)
 
     # Replace project slug after " — " (em dash)
-    match = re.search(r" — (\S+)( \(captured)", line)
+    match = re.search(r" — (\S+)( \(from:)", line)
     if match:
         slug = match.group(1)
         if slug in _slug_map and slug not in ("unknown", "none"):
