@@ -1,0 +1,60 @@
+### Bill _ Bahar 2026-04-07 18-00-04
+
+### Group 2 Current Challenges & Project Status
+
+- Lens R&D direction unclear after Jervis departure
+	- Only Luis remaining (scientist), no engineering support
+	- No plan for rerunning lens documents with new models
+	- Need alignment meeting: Bill, Alex, Rob, Luis
+	- Use existing experiment backlog template from Q1
+- Kinkai tech leadership confusion
+	- Unclear if Jutish or Alex owns tech direction
+	- Group 3 refusing collaboration (“busy with Future House”)
+	- Team frustration over lack of coordination on KG retrieval
+	- Jutish needs coaching on people management (technical skills strong)
+- Thermo Fisher M2 requirements missing
+	- Team delivered M1 in Q1, waiting for M2 specs
+	- Project not in Patch’s priority document
+	- Bana postponed kickoff meetings multiple times
+	- Team switching to EV-agnostic requirements
+	- Mike/Rachel deadline: end of week for clear requirements
+- Omics MVP launching this week
+	- Feature-flagged prod deployment planned
+	- Internal enablement session next week
+	- Group 3 building duplicate third-party integrations
+	- MVP 2.0 brainstorming meeting scheduled (Bill to be added)
+
+### Team Management & Operations
+
+- Pod 2D requires most attention/support
+	- All new hires (December/January)
+	- Jutish needs people management coaching
+	- Tony aware, working on mentorship plan
+- Inference project on pause through April
+	- Hypotheses moved to wet lab for validation
+	- Weekly rituals suspended
+	- Imran Rashid (2C) may replace Bruno as engineer
+	- Julie (Group 2 science) consulting role
+- Four project groups structure:
+
+### Communication & Process Issues
+
+- Release coordination problems with Group 5
+	- Stefan proposing retro on release issues
+	- Need to identify actions for Group 2 vs Group 5
+- Skills/tools/workflows confusion from Group 3
+	- Future House work causing job security concerns
+	- “Do I even have a job as data engineer?”
+	- Tony’s message caused panic, unclear ownership transfer plan
+	- Need clear communication on Group 2’s role post-Future House
+- Technical design guide needs finalization
+	- Simon collected feedback, ready to share
+	- Clarify: blocker vs gate vs guidance
+	- Template already in use company-wide
+
+### Next Steps
+
+- Bill to be added to all project group planning sessions
+- Group 2 leadership meeting Thursday (priorities review)
+- UK team social gathering opportunity (Jutish, Cornell, Bruno, Paulina)
+- Follow up with Tony on Jutish coaching plan

@@ -1,0 +1,50 @@
+### Weekly Sync - Data Teams Senior Leadership 
+Body:
+### Team Support & Resource Needs
+
+- Bill requested support for 1B strategy and roadmap development
+    - Early draft to be shared with Mike, Brandon, and Bahar
+    - Goal: refine with product, science team, and 1B team over next 2 weeks
+    - Urgent need as team members running out of work
+    - Need to identify short-term goals for team
+
+### Cross-Team Collaboration Challenges
+
+- Breakdown in communication between Groups 1, 2, and 3 since Gen 3 restructuring
+    - Teams working in silos instead of collaborating on shared platform components
+    - Missing opportunities for knowledge sharing on embeddings, KG integration, retrieval
+- Specific technical alignment issues:
+    - Need to benchmark retrieving from graph using 1B embedding as baseline
+    - Different embedding models being used (Google vs 1B model)
+    - Pressure from Tony to ship KG data quickly vs proper integration
+- Cristina flagged this as red flag to Tony - too many frustrated people, risk of attrition
+    - Tony and John working on solutions, conversation planned for next week
+
+### Science Team Resourcing (Group 1)
+
+- Approval received to hire additional science resource if needed
+- Current assessment: no immediate need based on team feedback
+    - Rayhan happy taking on Marie’s technical work
+    - Frank satisfied with technical projects and internal data support
+    - Internal data team content with end-to-end projects
+- Previous motivation concerns resolved when Marine and Gus left (they were interested in Group 2 collaboration)
+- Hire approval on hold until clear capacity need identified
+
+### Product Convergence Initiative
+
+- Mike developing product-focused document for EV/methods extraction and Lens relationship extraction convergence
+- Proposed participants:
+    - EV team: Cindy, Sydney (science)
+    - Lens team: Ali, Bahlash
+    - Additional: Elvis (separate but related work), Tony, Dan
+- Timeline: document ready end of day, Slack channel to follow
+- Planning for May discovery, June implementation
+
+### Skills/Tools Ownership Clarity
+
+- Confusion across teams about strategy and ownership responsibilities
+- Bahar flagged to Tony as morale issue requiring urgent clarification
+- Group 3 created vision video (shared in chat) covering platform, tools, skills definitions
+    - Bioinformatics work to remain with Group 2
+    - Frontend implementation with Group 3
+    - Current focus: quick implementation of Fernando’s work toward future goals
