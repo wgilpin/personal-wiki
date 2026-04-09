@@ -79,7 +79,11 @@ def process_note(note_path: Path, corrections: dict[str, str], dry_run: bool = F
     context = gather_context()
 
     print("  Calling API...")
-    output = call_api(meeting_note, context, corrections)
+    try:
+        output = call_api(meeting_note, context, corrections)
+    except RuntimeError as e:
+        print(f"  ⚠ Skipping: {e}")
+        return
 
     print("  Writing wiki updates...")
     apply_output(output, meeting_title)

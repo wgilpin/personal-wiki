@@ -36,5 +36,10 @@ def timed_generate(label: str, **kwargs):
     t0 = time.perf_counter()
     response = client.models.generate_content(**kwargs)
     elapsed = time.perf_counter() - t0
-    print(f"  [{label}] {elapsed:.1f}s")
+    usage = response.usage_metadata
+    print(
+        f"  [{label}] {elapsed:.1f}s"
+        f"  tokens: {usage.prompt_token_count} in → {usage.candidates_token_count} out"
+        f" ({usage.total_token_count} total)"
+    )
     return response
