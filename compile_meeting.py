@@ -154,6 +154,7 @@ def main():
     parser.add_argument("--query", type=str, help="Query the wiki")
     parser.add_argument("--apply-corrections", action="store_true", help="Apply corrections.json to existing wiki files and folders")
     parser.add_argument("--reprocess-all", action="store_true", help="Reprocess all files, ignoring the processed-files manifest")
+    parser.add_argument("--backlinks", action="store_true", help="Rebuild backlinks across all wiki pages")
     args = parser.parse_args()
 
     if args.pending:
@@ -168,6 +169,11 @@ def main():
     if args.apply_corrections:
         corrections = load_corrections()
         run_apply_corrections(corrections, args.dry_run)
+        return
+
+    if args.backlinks:
+        from backlinks import rebuild_all_backlinks
+        rebuild_all_backlinks(args.dry_run)
         return
 
     if not args.note:

@@ -110,3 +110,23 @@ def apply_output(output: WikiOutput, meeting_title: str, dry_run: bool = False):
     all_index_updates = snapshot_index_updates + output.index_updates
     if all_index_updates:
         update_index(all_index_updates, dry_run)
+
+    # Post-process: inject backlinks into all files that were just written
+    from backlinks import add_backlinks_to_pending, build_registry, process_content
+
+    registry = build_registry()
+
+    for entity_list in (output.project_summaries, output.theme_updates, output.people_updates):
+        for item in entity_list:
+            path = WIKI_DIR / item.path
+            if path.exists():
+                content = path.read_text()
+                updated = process_content(content, item.path, registry)
+                if updated != content:
+                    write_file(path, updated, dry_run)
+
+    if output.pending_bill and PENDING_FILE.exists():
+        content = PENDING_FILE.read_text()
+        updated = add_backlinks_to_pending(content, registry)
+        if updated != content:
+            write_file(PENDING_FILE, updated, dry_run)
