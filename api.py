@@ -46,7 +46,7 @@ def apply_corrections(text: str, corrections: dict[str, str]) -> str:
 
 
 def build_corrections_prompt(corrections: dict[str, str]) -> str:
-    """Build a system prompt section from corrections and wiki entity names."""
+    """Build a system prompt section from corrections and wiki index."""
     lines = ["\n## Transcription Corrections\n"]
     lines.append("Granola transcripts frequently mishear product and project names.")
     lines.append("The following corrections have already been applied to the input text,")
@@ -55,21 +55,13 @@ def build_corrections_prompt(corrections: dict[str, str]) -> str:
     for wrong, right in corrections.items():
         lines.append(f'- "{wrong}" → {right}')
 
-    # Derive canonical entity names from the wiki directory structure
-    project_names = sorted(d.name for d in PROJECTS_DIR.iterdir() if d.is_dir())
-    people_names = sorted(p.stem for p in PEOPLE_DIR.glob("*.md"))
-
-    if project_names:
-        lines.append("\n### Known Project Names (from wiki)")
-        lines.append("Always use these exact names (not phonetic variants):\n")
-        for p in project_names:
-            lines.append(f"- {p}")
-
-    if people_names:
-        lines.append("\n### Known People Names (from wiki)")
-        lines.append("Prefer these canonical forms:\n")
-        for p in people_names:
-            lines.append(f"- {p}")
+    # Include the wiki index so the LLM knows all existing people and projects
+    from config import INDEX_FILE
+    if INDEX_FILE.exists():
+        lines.append("\n### Existing Wiki Index\n")
+        lines.append("Use the paths and summaries below to identify canonical names")
+        lines.append("for people and projects. Match incoming names to these:\n")
+        lines.append(INDEX_FILE.read_text())
 
     return "\n".join(lines)
 
