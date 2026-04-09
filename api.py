@@ -59,6 +59,7 @@ def call_api(meeting_note: str, existing_context: dict) -> WikiOutput:
             system_instruction=system_prompt,
             response_mime_type="application/json",
             response_schema=WikiOutput,
+            max_output_tokens=65536,
         ),
     )
 
