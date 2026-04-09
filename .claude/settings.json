@@ -4,6 +4,7 @@
       "Read(//Users/bgilpin/wiki/benchsci/projects/cai-1/**)",
       "Read(//Users/bgilpin/wiki/benchsci/themes/**)",
       "Read(//Users/bgilpin/wiki/benchsci/**)",
+      "Bash(grep *)",
       "WebFetch(domain:www.moritzjung.dev)"
     ]
   }

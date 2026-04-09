@@ -2,10 +2,7 @@
 
 import sys
 
-from google.genai import types
-
 from config import (
-    API_MODEL,
     INDEX_FILE,
     PROJECTS_DIR,
     WIKI_DIR,
@@ -23,13 +20,9 @@ def run_query(question: str):
 
     find_response = timed_generate(
         "query/navigate",
-        model=API_MODEL,
         contents=f"Index:\n{index}\n\nQuestion: {question}\n\nWhich paths should I read?",
-        config=types.GenerateContentConfig(
-            system_instruction="You are a wiki navigator. Given an index and a question, return a JSON list of file paths to read.",
-            response_mime_type="application/json",
-            response_schema=PathList,
-        ),
+        system_instruction="You are a wiki navigator. Given an index and a question, return a JSON list of file paths to read.",
+        response_schema=PathList,
     )
     path_list = PathList.model_validate_json(find_response.text)
     paths = path_list.paths if path_list.paths else [
@@ -50,10 +43,7 @@ def run_query(question: str):
 
     answer_response = timed_generate(
         "query/answer",
-        model=API_MODEL,
         contents=f"{pages_block}\n\nQuestion: {question}",
-        config=types.GenerateContentConfig(
-            system_instruction="You are a knowledgeable assistant with access to an organizational wiki. Answer questions directly and honestly based on the wiki content provided.",
-        ),
+        system_instruction="You are a knowledgeable assistant with access to an organizational wiki. Answer questions directly and honestly based on the wiki content provided.",
     )
     print(answer_response.text)

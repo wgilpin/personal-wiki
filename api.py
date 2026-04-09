@@ -1,9 +1,6 @@
-"""Gemini API calls and wiki context gathering."""
-
-from google.genai import types
+"""LLM API calls and wiki context gathering."""
 
 from config import (
-    API_MODEL,
     PEOPLE_DIR,
     PROJECTS_DIR,
     SCHEMA_FILE,
@@ -98,18 +95,13 @@ def call_api(meeting_note: str, existing_context: dict, corrections: dict[str, s
 
     response = timed_generate(
         "compile",
-        model=API_MODEL,
         contents=user_message,
-        config=types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            response_mime_type="application/json",
-            response_schema=WikiOutput,
-            max_output_tokens=65536,
-        ),
+        system_instruction=system_prompt,
+        response_schema=WikiOutput,
+        max_output_tokens=65536,
     )
 
-    finish = response.candidates[0].finish_reason if response.candidates else None
-    if finish and "MAX_TOKENS" in str(finish):
+    if response.finish_reason and "MAX_TOKENS" in str(response.finish_reason):
         raise RuntimeError("Output truncated — hit model token limit")
 
     return WikiOutput.model_validate_json(response.text)

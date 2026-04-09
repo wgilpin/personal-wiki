@@ -82,8 +82,8 @@ def process_note(note_path: Path, corrections: dict[str, str], dry_run: bool = F
     print("  Calling API...")
     try:
         output = call_api(meeting_note, context, corrections)
-    except RuntimeError as e:
-        print(f"  ⚠ Skipping: {e}")
+    except Exception as e:
+        print(f"  ⚠ Skipping {meeting_title}: {e}")
         return
 
     # Stamp each pending item with a relative link to the source Granola note
