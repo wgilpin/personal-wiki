@@ -44,10 +44,27 @@ def build_registry() -> list[Entity]:
         rel = str(p.relative_to(WIKI_DIR))
         entities.append(Entity(name=name, path=rel.removesuffix(".md"), kind="person"))
 
+    registered_projects: set[str] = set()
     for p in PROJECTS_DIR.glob("*/summary.md"):
         name = _extract_heading(p)
         if name:
             rel = str(p.relative_to(WIKI_DIR))
+            entities.append(Entity(name=name, path=rel.removesuffix(".md"), kind="project"))
+            registered_projects.add(p.parent.name)
+
+    # Projects without summaries: use latest snapshot heading for display name
+    for project_dir in PROJECTS_DIR.iterdir():
+        if not project_dir.is_dir() or project_dir.name in registered_projects:
+            continue
+        snapshots = sorted(project_dir.glob("*.md"), reverse=True)
+        if not snapshots:
+            continue
+        heading = _extract_heading(snapshots[0])
+        if heading:
+            # Snapshot headings are "Project Name — YYYY-MM-DD", strip the date
+            name = heading.split(" — ")[0].strip()
+            # Link to the latest snapshot since there's no summary
+            rel = str(snapshots[0].relative_to(WIKI_DIR))
             entities.append(Entity(name=name, path=rel.removesuffix(".md"), kind="project"))
 
     for p in THEMES_DIR.glob("*.md"):
@@ -209,47 +226,56 @@ def process_content(content: str, rel_path: str, registry: list[Entity]) -> str:
     return inject_backlinks(content, mentions, kind)
 
 
-def add_backlinks_to_pending(content: str, registry: list[Entity]) -> str:
-    """Add inline wiki-links to pending-bill.md lines.
+def _build_project_slug_map(registry: list[Entity]) -> dict[str, Entity]:
+    """Build a slug -> Entity lookup for projects.
 
-    Replaces project slugs and people names with Obsidian wiki-links.
+    Path is like "projects/cai-2/summary" or "projects/thermo-fisher/2026-04-08".
+    The slug is always the second segment.
     """
-    # Build lookup maps
-    project_slug_map: dict[str, Entity] = {}
+    slug_map: dict[str, Entity] = {}
     for e in registry:
         if e.kind == "project":
-            # Extract slug from path like "projects/lens/summary"
             parts = e.path.split("/")
             if len(parts) >= 2:
-                project_slug_map[parts[1]] = e
+                # Prefer summary paths over snapshot paths
+                if parts[1] not in slug_map or parts[-1] == "summary":
+                    slug_map[parts[1]] = e
+    return slug_map
 
-    lines = content.splitlines()
-    result = []
 
-    for line in lines:
-        if not line.startswith("- ["):
-            result.append(line)
+def link_pending_line(line: str, registry: list[Entity], _slug_map: dict[str, Entity] | None = None) -> str:
+    """Add wiki-links to a single pending-bill line."""
+    if not line.startswith("- ["):
+        return line
+
+    if _slug_map is None:
+        _slug_map = _build_project_slug_map(registry)
+
+    # Replace project slug after " — " (em dash)
+    match = re.search(r" — (\S+)( \(captured)", line)
+    if match:
+        slug = match.group(1)
+        if slug in _slug_map and slug not in ("unknown", "none"):
+            e = _slug_map[slug]
+            line = line.replace(f" — {slug}", f" — [[{e.path}|{e.name}]]")
+
+    # Replace people names in the line text
+    for entity in registry:
+        if entity.kind != "person":
             continue
+        # Only match if not already inside a [[ ]] link, skip date contexts
+        pattern = r"(?<!\[\[)(?<!\|)\b" + re.escape(entity.name) + r"\b(?!\]\])(?!\s+\d)"
+        if re.search(pattern, line):
+            line = re.sub(pattern, f"[[{entity.path}|{entity.name}]]", line)
 
-        # Replace project slug after " — " (em dash)
-        match = re.search(r" — (\S+)( \(captured)", line)
-        if match:
-            slug = match.group(1)
-            if slug in project_slug_map and slug not in ("unknown", "none"):
-                e = project_slug_map[slug]
-                line = line.replace(f" — {slug}", f" — [[{e.path}|{e.name}]]")
+    return line
 
-        # Replace people names in the line text
-        for entity in registry:
-            if entity.kind != "person":
-                continue
-            # Only match if not already inside a [[ ]] link, skip date contexts
-            pattern = r"(?<!\[\[)(?<!\|)\b" + re.escape(entity.name) + r"\b(?!\]\])(?!\s+\d)"
-            if re.search(pattern, line):
-                line = re.sub(pattern, f"[[{entity.path}|{entity.name}]]", line)
 
-        result.append(line)
-
+def add_backlinks_to_pending(content: str, registry: list[Entity]) -> str:
+    """Add inline wiki-links to all lines in pending-bill.md."""
+    slug_map = _build_project_slug_map(registry)
+    lines = content.splitlines()
+    result = [link_pending_line(line, registry, slug_map) for line in lines]
     return "\n".join(result)
 
 

@@ -64,18 +64,22 @@ def update_index(updates: list[IndexUpdate], dry_run: bool = False):
     write_file(INDEX_FILE, "\n".join(lines) + "\n", dry_run)
 
 
-def append_pending(items: list[PendingItem], dry_run: bool = False):
+def append_pending(items: list[PendingItem], registry=None, dry_run: bool = False):
     if not items:
         return
+
+    from backlinks import link_pending_line
 
     existing = read_file_safe(PENDING_FILE)
     if not existing:
         existing = "# Pending — Bill\n\nActions only Bill owns. Review weekly.\n\n"
 
-    new_lines = [
-        f"- [ ] {item.action} — {item.project} (captured {item.date_captured}, from: {item.source_meeting})"
-        for item in items
-    ]
+    new_lines = []
+    for item in items:
+        line = f"- [ ] {item.action} — {item.project} (captured {item.date_captured}, from: {item.source_meeting})"
+        if registry:
+            line = link_pending_line(line, registry)
+        new_lines.append(line)
 
     updated = existing.rstrip() + "\n" + "\n".join(new_lines) + "\n"
     write_file(PENDING_FILE, updated, dry_run)
@@ -103,19 +107,21 @@ def apply_output(output: WikiOutput, meeting_title: str, dry_run: bool = False):
     for theme in output.theme_updates:
         write_file(WIKI_DIR / theme.path, theme.updated_content, dry_run)
 
-    append_pending(output.pending_bill, dry_run)
-
     apply_people_updates(output.people_updates, dry_run)
 
     all_index_updates = snapshot_index_updates + output.index_updates
     if all_index_updates:
         update_index(all_index_updates, dry_run)
 
-    # Post-process: inject backlinks into all files that were just written
-    from backlinks import add_backlinks_to_pending, build_registry, process_content
+    # Build registry after all files are written so new entities are included
+    from backlinks import build_registry, process_content
 
     registry = build_registry()
 
+    # Append pending items with backlinks baked into each line
+    append_pending(output.pending_bill, registry, dry_run)
+
+    # Post-process: inject backlinks into all entity pages that were just written
     for entity_list in (output.project_summaries, output.theme_updates, output.people_updates):
         for item in entity_list:
             path = WIKI_DIR / item.path
@@ -124,9 +130,3 @@ def apply_output(output: WikiOutput, meeting_title: str, dry_run: bool = False):
                 updated = process_content(content, item.path, registry)
                 if updated != content:
                     write_file(path, updated, dry_run)
-
-    if output.pending_bill and PENDING_FILE.exists():
-        content = PENDING_FILE.read_text()
-        updated = add_backlinks_to_pending(content, registry)
-        if updated != content:
-            write_file(PENDING_FILE, updated, dry_run)

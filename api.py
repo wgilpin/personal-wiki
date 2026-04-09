@@ -23,9 +23,20 @@ def load_schema() -> str:
 def gather_context() -> dict:
     context = {}
 
+    projects_with_summary = set()
     for summary_path in PROJECTS_DIR.glob("*/summary.md"):
         rel = str(summary_path.relative_to(WIKI_DIR))
         context[rel] = summary_path.read_text()
+        projects_with_summary.add(summary_path.parent.name)
+
+    # Include snapshots for projects without a summary so the LLM
+    # has history to work with when it creates the first summary.
+    for project_dir in PROJECTS_DIR.iterdir():
+        if not project_dir.is_dir() or project_dir.name in projects_with_summary:
+            continue
+        for snapshot in sorted(project_dir.glob("*.md")):
+            rel = str(snapshot.relative_to(WIKI_DIR))
+            context[rel] = snapshot.read_text()
 
     for theme_path in THEMES_DIR.glob("*.md"):
         rel = str(theme_path.relative_to(WIKI_DIR))
