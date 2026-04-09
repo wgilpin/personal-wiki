@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/bgilpin/wiki/benchsci/projects/cai-1/**)",
+      "Read(//Users/bgilpin/wiki/benchsci/themes/**)",
+      "Read(//Users/bgilpin/wiki/benchsci/**)"
+    ]
+  }
+}

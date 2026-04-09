@@ -18,15 +18,36 @@ Environment:
 """
 
 import argparse
+import hashlib
+import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 from slugify import slugify
 
 from api import apply_corrections, call_api, gather_context
-from config import PENDING_FILE, WIKI_DIR, load_corrections
+from config import PENDING_FILE, PROCESSED_FILE, WIKI_DIR, load_corrections
 from query import run_query
 from wiki import apply_output, ensure_dirs, read_file_safe
+
+
+def file_hash(path: Path) -> str:
+    """Return the SHA-256 hex digest of a file's contents."""
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def load_processed() -> dict:
+    """Load the processed-files manifest. Returns empty dict if missing."""
+    if PROCESSED_FILE.exists():
+        return json.loads(PROCESSED_FILE.read_text())
+    return {}
+
+
+def save_processed(manifest: dict):
+    """Write the processed-files manifest to disk."""
+    PROCESSED_FILE.parent.mkdir(parents=True, exist_ok=True)
+    PROCESSED_FILE.write_text(json.dumps(manifest, indent=2) + "\n")
 
 
 def collect_notes(path: Path) -> list[Path]:
@@ -132,6 +153,7 @@ def main():
     parser.add_argument("--pending", action="store_true", help="Print pending-bill.md")
     parser.add_argument("--query", type=str, help="Query the wiki")
     parser.add_argument("--apply-corrections", action="store_true", help="Apply corrections.json to existing wiki files and folders")
+    parser.add_argument("--reprocess-all", action="store_true", help="Reprocess all files, ignoring the processed-files manifest")
     args = parser.parse_args()
 
     if args.pending:
@@ -161,16 +183,36 @@ def main():
 
     corrections = load_corrections()
     notes = collect_notes(note_path)
+    manifest = load_processed()
 
     print(f"Wiki dir: {WIKI_DIR}")
     if args.dry_run:
         print("DRY RUN — no files will be written")
     print(f"Found {len(notes)} note(s) to process")
 
+    skipped = 0
+    processed = 0
     for note in notes:
-        process_note(note, corrections, args.dry_run)
+        note_key = str(note.resolve())
+        h = file_hash(note)
+        entry = manifest.get(note_key)
+        if not args.reprocess_all and entry and entry.get("content_hash") == h:
+            skipped += 1
+            continue
 
-    print(f"\nDone. Processed {len(notes)} note(s).")
+        process_note(note, corrections, args.dry_run)
+        processed += 1
+
+        if not args.dry_run:
+            manifest[note_key] = {
+                "content_hash": h,
+                "processed_at": datetime.now(timezone.utc).isoformat(),
+            }
+            save_processed(manifest)
+
+    if skipped:
+        print(f"Skipped {skipped} already-processed note(s)")
+    print(f"\nDone. Processed {processed} note(s).")
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@ THEMES_DIR = WIKI_DIR / "themes"
 PEOPLE_DIR = WIKI_DIR / "people"
 PENDING_FILE = WIKI_DIR / "pending-bill.md"
 INDEX_FILE = WIKI_DIR / "index.md"
+PROCESSED_FILE = WIKI_DIR / ".processed.json"
 SCHEMA_FILE = Path(__file__).parent / "schema.md"
 CORRECTIONS_FILE = Path(__file__).parent / "corrections.json"
 
