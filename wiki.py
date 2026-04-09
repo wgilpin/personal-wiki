@@ -4,6 +4,7 @@ from datetime import date
 from pathlib import Path
 
 from config import (
+    CLOSED_FILE,
     INDEX_FILE,
     PENDING_FILE,
     PEOPLE_DIR,
@@ -62,6 +63,83 @@ def update_index(updates: list[IndexUpdate], dry_run: bool = False):
         lines.append(f"| {path} | {meta['summary']} | {meta['updated']} |")
 
     write_file(INDEX_FILE, "\n".join(lines) + "\n", dry_run)
+
+
+def sweep_closed(dry_run: bool = False):
+    """Move checked-off items from pending-bill.md to closed.md."""
+    pending = read_file_safe(PENDING_FILE)
+    if not pending:
+        return
+
+    keep_lines: list[str] = []
+    closed_lines: list[str] = []
+    current_heading: str | None = None
+
+    for line in pending.splitlines():
+        if line.startswith("### "):
+            current_heading = line
+            keep_lines.append(line)
+        elif line.startswith("- [x]") or line.startswith("- [X]"):
+            closed_lines.append((current_heading, line))
+        else:
+            keep_lines.append(line)
+
+    if not closed_lines:
+        return
+
+    # Remove empty date headings (heading followed by another heading or EOF)
+    cleaned: list[str] = []
+    for i, line in enumerate(keep_lines):
+        if line.startswith("### "):
+            # Look ahead: is the next non-blank line another heading or EOF?
+            rest = [l for l in keep_lines[i + 1:] if l.strip()]
+            if not rest or rest[0].startswith("### "):
+                continue  # drop empty heading
+        cleaned.append(line)
+
+    # Write updated pending file
+    new_pending = "\n".join(cleaned).rstrip() + "\n"
+    write_file(PENDING_FILE, new_pending, dry_run)
+
+    # Build closed.md content
+    existing_closed = read_file_safe(CLOSED_FILE)
+    if not existing_closed:
+        existing_closed = "# Closed\n\nCompleted action items.\n"
+
+    # Group closed items by date heading
+    by_date: dict[str, list[str]] = {}
+    for heading, item in closed_lines:
+        by_date.setdefault(heading, []).append(item)
+
+    for heading, items in by_date.items():
+        if heading and heading in existing_closed:
+            # Append under existing date section
+            idx = existing_closed.index(heading) + len(heading)
+            next_nl = existing_closed.index("\n", idx)
+            next_heading = existing_closed.find("\n### ", next_nl)
+            if next_heading == -1:
+                insert_at = len(existing_closed.rstrip())
+            else:
+                insert_at = next_heading
+            existing_closed = (
+                existing_closed[:insert_at].rstrip()
+                + "\n"
+                + "\n".join(items)
+                + "\n"
+                + existing_closed[insert_at:]
+            )
+        else:
+            existing_closed = (
+                existing_closed.rstrip()
+                + f"\n\n{heading}\n"
+                + "\n".join(items)
+                + "\n"
+            )
+
+    write_file(CLOSED_FILE, existing_closed, dry_run)
+
+    count = len(closed_lines)
+    print(f"  Swept {count} closed item(s) to closed.md")
 
 
 def append_pending(items: list[PendingItem], registry=None, dry_run: bool = False):

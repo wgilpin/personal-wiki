@@ -29,7 +29,7 @@ from slugify import slugify
 from api import apply_corrections, call_api, gather_context
 from config import PENDING_FILE, PROCESSED_FILE, WIKI_DIR, load_corrections
 from query import run_query
-from wiki import apply_output, ensure_dirs, read_file_safe
+from wiki import apply_output, ensure_dirs, read_file_safe, sweep_closed
 
 
 def file_hash(path: Path) -> str:
@@ -190,6 +190,9 @@ def main():
         sys.exit(1)
 
     ensure_dirs()
+
+    # Move checked-off items from pending to closed before processing new notes
+    sweep_closed(args.dry_run)
 
     corrections = load_corrections()
     notes = collect_notes(note_path)
