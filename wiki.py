@@ -1,5 +1,6 @@
 """File helpers, index maintenance, pending items, and people updates."""
 
+import re
 from datetime import date
 from pathlib import Path
 
@@ -155,7 +156,10 @@ def append_pending(items: list[PendingItem], registry=None, dry_run: bool = Fals
     # Group new items by date, inserting under existing or new h3 headings
     for item in items:
         project_part = f" — {item.project}" if item.project and item.project not in ("unknown", "none", "") else ""
-        source_link = f"[{item.source_meeting}]({item.source_doc})" if item.source_doc else item.source_meeting
+        # Strip [[wiki/links|Display]] down to plain text so we don't nest links
+        clean_meeting = re.sub(r"\[\[[^\]]*\|([^\]]+)\]\]", r"\1", item.source_meeting)
+        clean_meeting = re.sub(r"\[\[([^\]]+)\]\]", r"\1", clean_meeting)
+        source_link = f"[{clean_meeting}]({item.source_doc})" if item.source_doc else clean_meeting
         line = f"- [ ] {item.action}{project_part} (from: {source_link})"
         if registry:
             line = link_pending_line(line, registry)
