@@ -240,10 +240,18 @@ Each item must be:
 
 ## Name Resolution
 
-Maintain consistency across the wiki. If a name appears with variant
-spellings (e.g. "Jutish", "Jyotish", "Jyothish") resolve to the most
-complete or most recently confirmed form. Flag ambiguous resolutions
-in a comment field on the people page.
+Maintain consistency across the wiki. Names — whether people, products,
+or projects — may appear with variant spellings or transcription errors
+in Granola notes. Resolve to the canonical form.
+
+For people: if a name appears with variants (e.g. "Jutish", "Jyotish",
+"Jyothish") resolve to the most complete or most recently confirmed form.
+
+For products/projects: transcription errors are common (e.g. "kaito"
+for "CAI 2"). Refer to the Transcription Corrections section appended
+to this prompt for known corrections and canonical entity names.
+
+Flag ambiguous resolutions in a comment field on the relevant page.
 
 ## What To Ignore
 

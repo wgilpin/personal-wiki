@@ -21,8 +21,10 @@ import argparse
 import sys
 from pathlib import Path
 
-from api import call_api, gather_context
-from config import PENDING_FILE, WIKI_DIR
+from slugify import slugify
+
+from api import apply_corrections, call_api, gather_context
+from config import PENDING_FILE, WIKI_DIR, load_corrections
 from query import run_query
 from wiki import apply_output, ensure_dirs, read_file_safe
 
@@ -41,7 +43,7 @@ def collect_notes(path: Path) -> list[Path]:
     sys.exit(1)
 
 
-def process_note(note_path: Path, dry_run: bool = False):
+def process_note(note_path: Path, corrections: dict[str, str], dry_run: bool = False):
     meeting_title = note_path.stem
 
     if dry_run:
@@ -56,10 +58,71 @@ def process_note(note_path: Path, dry_run: bool = False):
     context = gather_context()
 
     print("  Calling API...")
-    output = call_api(meeting_note, context)
+    output = call_api(meeting_note, context, corrections)
 
     print("  Writing wiki updates...")
     apply_output(output, meeting_title)
+
+
+def run_apply_corrections(corrections: dict[str, str], dry_run: bool = False):
+    """Apply corrections to all existing wiki files and folder names."""
+    if not corrections:
+        print("No corrections defined in corrections.json")
+        return
+
+    slug_corrections = {}
+    for wrong, right in corrections.items():
+        wrong_slug = slugify(wrong)
+        right_slug = slugify(right)
+        if wrong_slug != right_slug:
+            slug_corrections[wrong_slug] = right_slug
+
+    # Pass 1: Update file contents
+    changed_files = 0
+    for md_file in sorted(WIKI_DIR.rglob("*.md")):
+        original = md_file.read_text()
+        updated = apply_corrections(original, corrections)
+        # Also fix slug references (e.g., path references in index.md)
+        updated = apply_corrections(updated, slug_corrections)
+        if updated != original:
+            changed_files += 1
+            rel = md_file.relative_to(WIKI_DIR)
+            if dry_run:
+                print(f"  [dry-run] Would update content: {rel}")
+            else:
+                md_file.write_text(updated)
+                print(f"  updated: {rel}")
+
+    # Pass 2: Rename directories (deepest first to avoid breaking parent paths)
+    renamed_dirs = 0
+    for d in sorted(WIKI_DIR.rglob("*"), key=lambda p: len(p.parts), reverse=True):
+        if not d.is_dir() or d.name.startswith("."):
+            continue
+        for wrong_slug, right_slug in slug_corrections.items():
+            if wrong_slug in d.name:
+                new_name = d.name.replace(wrong_slug, right_slug)
+                new_path = d.parent / new_name
+                renamed_dirs += 1
+                if dry_run:
+                    print(f"  [dry-run] Would rename: {d.relative_to(WIKI_DIR)} → {new_path.relative_to(WIKI_DIR)}")
+                else:
+                    d.rename(new_path)
+                    print(f"  renamed: {d.relative_to(WIKI_DIR)} → {new_path.relative_to(WIKI_DIR)}")
+                break
+
+    # Pass 3: Update .obsidian/workspace.json if present
+    workspace = WIKI_DIR / ".obsidian" / "workspace.json"
+    if workspace.exists():
+        original = workspace.read_text()
+        updated = apply_corrections(original, slug_corrections)
+        if updated != original:
+            if dry_run:
+                print(f"  [dry-run] Would update: .obsidian/workspace.json")
+            else:
+                workspace.write_text(updated)
+                print(f"  updated: .obsidian/workspace.json")
+
+    print(f"\nDone. Updated {changed_files} file(s), renamed {renamed_dirs} directory(ies).")
 
 
 def main():
@@ -68,6 +131,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Print output without writing files")
     parser.add_argument("--pending", action="store_true", help="Print pending-bill.md")
     parser.add_argument("--query", type=str, help="Query the wiki")
+    parser.add_argument("--apply-corrections", action="store_true", help="Apply corrections.json to existing wiki files and folders")
     args = parser.parse_args()
 
     if args.pending:
@@ -77,6 +141,11 @@ def main():
 
     if args.query:
         run_query(args.query)
+        return
+
+    if args.apply_corrections:
+        corrections = load_corrections()
+        run_apply_corrections(corrections, args.dry_run)
         return
 
     if not args.note:
@@ -90,6 +159,7 @@ def main():
 
     ensure_dirs()
 
+    corrections = load_corrections()
     notes = collect_notes(note_path)
 
     print(f"Wiki dir: {WIKI_DIR}")
@@ -98,7 +168,7 @@ def main():
     print(f"Found {len(notes)} note(s) to process")
 
     for note in notes:
-        process_note(note, args.dry_run)
+        process_note(note, corrections, args.dry_run)
 
     print(f"\nDone. Processed {len(notes)} note(s).")
 

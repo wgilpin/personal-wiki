@@ -38,8 +38,50 @@ def gather_context() -> dict:
     return context
 
 
-def call_api(meeting_note: str, existing_context: dict) -> WikiOutput:
+def apply_corrections(text: str, corrections: dict[str, str]) -> str:
+    """Apply known transcription corrections to text. Longest matches first."""
+    for wrong, right in sorted(corrections.items(), key=lambda x: len(x[0]), reverse=True):
+        text = text.replace(wrong, right)
+    return text
+
+
+def build_corrections_prompt(corrections: dict[str, str]) -> str:
+    """Build a system prompt section from corrections and wiki entity names."""
+    lines = ["\n## Transcription Corrections\n"]
+    lines.append("Granola transcripts frequently mishear product and project names.")
+    lines.append("The following corrections have already been applied to the input text,")
+    lines.append("but watch for variants the automatic replacement may have missed:\n")
+
+    for wrong, right in corrections.items():
+        lines.append(f'- "{wrong}" → {right}')
+
+    # Derive canonical entity names from the wiki directory structure
+    project_names = sorted(d.name for d in PROJECTS_DIR.iterdir() if d.is_dir())
+    people_names = sorted(p.stem for p in PEOPLE_DIR.glob("*.md"))
+
+    if project_names:
+        lines.append("\n### Known Project Names (from wiki)")
+        lines.append("Always use these exact names (not phonetic variants):\n")
+        for p in project_names:
+            lines.append(f"- {p}")
+
+    if people_names:
+        lines.append("\n### Known People Names (from wiki)")
+        lines.append("Prefer these canonical forms:\n")
+        for p in people_names:
+            lines.append(f"- {p}")
+
+    return "\n".join(lines)
+
+
+def call_api(meeting_note: str, existing_context: dict, corrections: dict[str, str] | None = None) -> WikiOutput:
     schema = load_schema()
+
+    if corrections:
+        meeting_note = apply_corrections(meeting_note, corrections)
+        corrections_block = build_corrections_prompt(corrections)
+    else:
+        corrections_block = ""
 
     context_lines = ["## Existing Wiki Content\n"]
     for path, content in existing_context.items():
@@ -48,7 +90,7 @@ def call_api(meeting_note: str, existing_context: dict) -> WikiOutput:
 
     context_block = "\n".join(context_lines) if existing_context else "No existing wiki content yet."
 
-    system_prompt = f"{schema}\n\n{context_block}"
+    system_prompt = f"{schema}\n\n{context_block}\n{corrections_block}"
     user_message = f"Process this meeting note and return the JSON output as specified in the schema.\n\n{meeting_note}"
 
     response = timed_generate(
