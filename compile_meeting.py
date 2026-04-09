@@ -20,6 +20,7 @@ Environment:
 import argparse
 import hashlib
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -84,6 +85,11 @@ def process_note(note_path: Path, corrections: dict[str, str], dry_run: bool = F
     except RuntimeError as e:
         print(f"  ⚠ Skipping: {e}")
         return
+
+    # Stamp each pending item with a relative link to the source Granola note
+    rel_note = os.path.relpath(note_path.resolve(), WIKI_DIR)
+    for item in output.pending_bill:
+        item.source_doc = rel_note
 
     print("  Writing wiki updates...")
     apply_output(output, meeting_title)

@@ -23,6 +23,7 @@ class PendingItem(BaseModel):
     project: str
     date_captured: str
     source_meeting: str
+    source_doc: str = ""
 
 
 class PeopleUpdate(BaseModel):

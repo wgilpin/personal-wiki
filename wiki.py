@@ -155,7 +155,8 @@ def append_pending(items: list[PendingItem], registry=None, dry_run: bool = Fals
     # Group new items by date, inserting under existing or new h3 headings
     for item in items:
         project_part = f" — {item.project}" if item.project and item.project not in ("unknown", "none", "") else ""
-        line = f"- [ ] {item.action}{project_part} (from: {item.source_meeting})"
+        source_link = f"[{item.source_meeting}]({item.source_doc})" if item.source_doc else item.source_meeting
+        line = f"- [ ] {item.action}{project_part} (from: {source_link})"
         if registry:
             line = link_pending_line(line, registry)
 
