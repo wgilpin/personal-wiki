@@ -266,7 +266,20 @@ def link_pending_line(line: str, registry: list[Entity], _slug_map: dict[str, En
         # Only match if not already inside a [[ ]] link, skip date contexts
         pattern = r"(?<!\[\[)(?<!\|)\b" + re.escape(entity.name) + r"\b(?!\]\])(?!\s+\d)"
         if re.search(pattern, line):
-            line = re.sub(pattern, f"[[{entity.path}|{entity.name}]]", line)
+            # Replace only outside markdown link display text [...](...) to avoid nesting
+            def _replace_outside_md_links(line_text, pat, repl):
+                result = []
+                last = 0
+                for m in re.finditer(r"\[([^\]]*)\]\([^)]*\)", line_text):
+                    # Process text before this markdown link
+                    result.append(re.sub(pat, repl, line_text[last:m.start()]))
+                    # Keep markdown link unchanged
+                    result.append(m.group(0))
+                    last = m.end()
+                # Process remaining text after last markdown link
+                result.append(re.sub(pat, repl, line_text[last:]))
+                return "".join(result)
+            line = _replace_outside_md_links(line, pattern, f"[[{entity.path}|{entity.name}]]")
 
     return line
 
