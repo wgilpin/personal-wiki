@@ -150,6 +150,10 @@ meetings. Update existing theme pages when new evidence arrives.
 | Date | Meeting | What Happened |
 |------|---------|---------------|
 
+Each evidence row MUST be a single line. Markdown tables break if cell
+content wraps to the next line. If the source material has bullet points
+or multiple items, join them into one line using semicolons as separators.
+
 ## Current State
 
 <Is this getting better, worse, or stable? What's the trajectory?>
