@@ -28,6 +28,16 @@ def read_file_safe(path: Path) -> str:
     return ""
 
 
+def _safe_wiki_path(relative: str) -> Path:
+    """Resolve a model-returned path safely under WIKI_DIR."""
+    # Strip leading slashes so Path doesn't treat it as absolute
+    cleaned = relative.lstrip("/")
+    resolved = (WIKI_DIR / cleaned).resolve()
+    if not str(resolved).startswith(str(WIKI_DIR.resolve())):
+        raise ValueError(f"Path escapes wiki dir: {relative}")
+    return resolved
+
+
 def write_file(path: Path, content: str, dry_run: bool = False):
     if dry_run:
         print(f"\n{'='*60}")
@@ -186,14 +196,14 @@ def append_pending(items: list[PendingItem], registry=None, dry_run: bool = Fals
 
 def apply_people_updates(updates: list[PeopleUpdate], dry_run: bool = False):
     for update in updates:
-        write_file(WIKI_DIR / update.path, update.updated_content, dry_run)
+        write_file(_safe_wiki_path(update.path), update.updated_content, dry_run)
 
 
 def apply_output(output: WikiOutput, meeting_title: str, dry_run: bool = False):
     snapshot_index_updates = []
 
     for snap in output.snapshots:
-        path = WIKI_DIR / snap.path
+        path = _safe_wiki_path(snap.path)
         write_file(path, snap.content, dry_run)
         snapshot_index_updates.append(IndexUpdate(
             path=snap.path,
@@ -201,10 +211,10 @@ def apply_output(output: WikiOutput, meeting_title: str, dry_run: bool = False):
         ))
 
     for proj in output.project_summaries:
-        write_file(WIKI_DIR / proj.path, proj.updated_content, dry_run)
+        write_file(_safe_wiki_path(proj.path), proj.updated_content, dry_run)
 
     for theme in output.theme_updates:
-        write_file(WIKI_DIR / theme.path, theme.updated_content, dry_run)
+        write_file(_safe_wiki_path(theme.path), theme.updated_content, dry_run)
 
     apply_people_updates(output.people_updates, dry_run)
 

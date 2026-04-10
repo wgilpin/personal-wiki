@@ -213,16 +213,29 @@ def main():
 
     skipped = 0
     processed = 0
+    failed = 0
+    # Pre-scan to count how many actually need processing
+    to_process = []
     for note in notes:
         note_key = str(note.resolve())
         h = file_hash(note)
         entry = manifest.get(note_key)
         if not args.reprocess_all and entry and entry.get("content_hash") == h:
             skipped += 1
-            continue
+        else:
+            to_process.append((note, note_key, h))
 
+    if skipped:
+        print(f"Skipping {skipped} already-processed note(s)")
+    print(f"{len(to_process)} note(s) to process\n")
+
+    for i, (note, note_key, h) in enumerate(to_process, 1):
+        print(f"[{i}/{len(to_process)}]", end=" ")
         success = process_note(note, corrections, args.dry_run)
-        processed += 1
+        if success:
+            processed += 1
+        else:
+            failed += 1
 
         if not args.dry_run and success:
             manifest[note_key] = {
@@ -231,9 +244,10 @@ def main():
             }
             save_processed(manifest)
 
-    if skipped:
-        print(f"Skipped {skipped} already-processed note(s)")
-    print(f"\nDone. Processed {processed} note(s).")
+    summary = f"\nDone. Processed {processed} note(s)."
+    if failed:
+        summary += f" {failed} failed."
+    print(summary)
 
 
 if __name__ == "__main__":
