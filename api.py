@@ -1,5 +1,10 @@
 """LLM API calls and wiki context gathering."""
 
+import json
+import re
+
+from pydantic import BaseModel
+
 from config import (
     PEOPLE_DIR,
     PROJECTS_DIR,
@@ -9,6 +14,8 @@ from config import (
     timed_generate,
 )
 from models import WikiOutput
+
+MAX_RETRIES = 2
 
 
 def load_schema() -> str:
@@ -74,6 +81,34 @@ def build_corrections_prompt(corrections: dict[str, str]) -> str:
     return "\n".join(lines)
 
 
+def _strip_fences(text: str) -> str:
+    """Remove markdown code fences if the model wrapped the JSON."""
+    text = re.sub(r"^```(?:json)?\s*\n?", "", text.strip())
+    text = re.sub(r"\n?```\s*$", "", text)
+    return text.strip()
+
+
+def _llm_repair_json(broken: str, error: str, schema_cls: type[BaseModel]) -> str:
+    """Ask the LLM to fix its own broken JSON — small context, fast call."""
+    schema = json.dumps(schema_cls.model_json_schema(), indent=2)
+    response = timed_generate(
+        "repair",
+        contents=(
+            f"The following JSON is invalid. The error was:\n{error}\n\n"
+            f"The JSON must conform to this schema:\n```json\n{schema}\n```\n\n"
+            f"Broken JSON:\n```\n{broken}\n```\n\n"
+            "Return ONLY the corrected JSON. No explanation, no markdown fences."
+        ),
+        system_instruction=(
+            "You are a JSON repair tool. Fix the broken JSON so it is valid and "
+            "conforms to the provided schema. Add any missing required fields with "
+            "sensible default values. Output nothing but valid JSON."
+        ),
+        max_output_tokens=65536,
+    )
+    return _strip_fences(response.text)
+
+
 def call_api(meeting_note: str, existing_context: dict, corrections: dict[str, str] | None = None) -> WikiOutput:
     schema = load_schema()
 
@@ -93,15 +128,33 @@ def call_api(meeting_note: str, existing_context: dict, corrections: dict[str, s
     system_prompt = f"{schema}\n\n{context_block}\n{corrections_block}"
     user_message = f"Process this meeting note and return the JSON output as specified in the schema.\n\n{meeting_note}"
 
-    response = timed_generate(
-        "compile",
-        contents=user_message,
-        system_instruction=system_prompt,
-        response_schema=WikiOutput,
-        max_output_tokens=65536,
-    )
+    last_error = None
+    for attempt in range(1 + MAX_RETRIES):
+        response = timed_generate(
+            "compile",
+            contents=user_message,
+            system_instruction=system_prompt,
+            response_schema=WikiOutput,
+            max_output_tokens=65536,
+        )
 
-    if response.finish_reason and "MAX_TOKENS" in str(response.finish_reason):
-        raise RuntimeError("Output truncated — hit model token limit")
+        if response.finish_reason and "MAX_TOKENS" in str(response.finish_reason):
+            raise RuntimeError("Output truncated — hit model token limit")
 
-    return WikiOutput.model_validate_json(response.text)
+        text = _strip_fences(response.text)
+        try:
+            return WikiOutput.model_validate_json(text)
+        except Exception as e:
+            last_error = e
+            print(f"  ⚠ Attempt {attempt + 1} failed ({e})")
+            if attempt < MAX_RETRIES:
+                # Ask the LLM to fix its own broken JSON — cheap, small-context call
+                print("  Asking LLM to repair JSON...")
+                try:
+                    repaired = _llm_repair_json(text, str(e), WikiOutput)
+                    return WikiOutput.model_validate_json(repaired)
+                except Exception as repair_err:
+                    print(f"  ⚠ Repair failed ({repair_err}), retrying from scratch...")
+                    last_error = repair_err
+
+    raise last_error

@@ -65,12 +65,13 @@ def collect_notes(path: Path) -> list[Path]:
     sys.exit(1)
 
 
-def process_note(note_path: Path, corrections: dict[str, str], dry_run: bool = False):
+def process_note(note_path: Path, corrections: dict[str, str], dry_run: bool = False) -> bool:
+    """Process a single note. Returns True on success, False on failure."""
     meeting_title = note_path.stem
 
     if dry_run:
         print(f"  [dry-run] Would process: {note_path}")
-        return
+        return True
 
     meeting_note = note_path.read_text()
 
@@ -84,7 +85,7 @@ def process_note(note_path: Path, corrections: dict[str, str], dry_run: bool = F
         output = call_api(meeting_note, context, corrections)
     except Exception as e:
         print(f"  ⚠ Skipping {meeting_title}: {e}")
-        return
+        return False
 
     # Stamp each pending item with a relative link to the source Granola note
     rel_note = os.path.relpath(note_path.resolve(), WIKI_DIR)
@@ -93,6 +94,7 @@ def process_note(note_path: Path, corrections: dict[str, str], dry_run: bool = F
 
     print("  Writing wiki updates...")
     apply_output(output, meeting_title)
+    return True
 
 
 def run_apply_corrections(corrections: dict[str, str], dry_run: bool = False):
@@ -219,10 +221,10 @@ def main():
             skipped += 1
             continue
 
-        process_note(note, corrections, args.dry_run)
+        success = process_note(note, corrections, args.dry_run)
         processed += 1
 
-        if not args.dry_run:
+        if not args.dry_run and success:
             manifest[note_key] = {
                 "content_hash": h,
                 "processed_at": datetime.now(timezone.utc).isoformat(),
